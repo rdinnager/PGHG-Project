@@ -1,0 +1,23 @@
+---
+title: "Establishing Phylogenetic Habitat Heterogeneity Model"
+author: "Russell Dinnage"
+date: "12/08/2014"
+output: 
+  html_document:
+    highlight: pygments
+bibliography: "/home/din02g/Google Drive/References/PGHG.bib"
+---
+
+This documents the process of building a simple simulation model in R, that simulates communities of a resource organism which has an evolutionary history (a phylogeny). Mixtures of these resources will then have a phylogenetic diversity. The simulation then allows a second trophic level of consumer organisms that also have a phylogeny. The purpose of the simulation is to understand how the diversity of resources (both compositional and phylogenetic) influences the diversity of the consumers, when we vary the phylogenetic structure of the species interactions between the consumer and resources. 
+
+First, I will describe how I will simulate phylogenetic structure in the species interactions. Here, I assume that a consumer either consumes a resource species or it does not. To characterize the interactions, I will use a matrix of zeroes and ones, with a number of rows equal to the number of resources and the number of columns equal to the number of consumers. A one at element [i, j] indicates that consumer j feeds on resource i. To model phylogenetic structure in this matrix, I use a model drawn from @Hadfield2014 (equivalent to a model in @Rafferty2013). The model begins by deriving a covariance structure for a set of latent gaussian variables which describe the strength of interaction between two organisms. Here, since we are assuming a binary presence/absence interaction, the latent variables are linked to the outcome by transforming via a inverse logit to a probability of interaction, which is then used to generate the presence/absence outcome via a draw from the Bernoulli distribution. The covariance structure $W$ between different pairs of interaction strengths is built up from the phylogenies of the two sets of interacting organisms by the following formula:
+
+$$ W = \sigma ^{2}_{[r]} \left (J_{[c]}\otimes A_{[r]}   \right ) + 
+\sigma ^{2}_{[c]} \left (A_{[c]}\otimes J_{[r]}   \right ) +
+\sigma ^{2}_{c[r]} \left (I_{[c]}\otimes A_{[r]}   \right ) +
+\sigma ^{2}_{[c]r} \left (A_{[c]}\otimes I_{[r]}   \right ) +
+\sigma ^{2}_{[cr]} \left (A_{[c]}\otimes A_{[r]}   \right ) $$
+
+where $\otimes$ is the Kronecker product, the $A$ are matrices based on the phylogenenies of the consumers (subscript $c$), and the resources (subscript $r$). 
+
+##References
