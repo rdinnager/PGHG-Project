@@ -9,7 +9,7 @@ Depends:
     dplyr,
     magrittr,
     ape,
-    mvtnorm,
+    MASS,
     boot,
     picante
 Description: This is a project package. Under Construction...
