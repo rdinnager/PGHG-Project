@@ -8,6 +8,23 @@ output:
 bibliography: "/home/din02g/Google Drive/References/PGHG.bib"
 ---
 
+```{r knitr_init, echo=FALSE, results="asis", cache=FALSE}
+library(knitr)
+
+## Global options
+options(max.print="75")
+opts_chunk$set(fig.path="out/",
+               echo=TRUE,
+         cache=TRUE,
+               cache.path="cache/",
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+opts_knit$set(width=75)
+```
+
 This documents the process of building a simple simulation model in R, that simulates communities of a resource organism which has an evolutionary history (a phylogeny). Mixtures of these resources will then have a phylogenetic diversity. The simulation then allows a second trophic level of consumer organisms that also have a phylogeny. The purpose of the simulation is to understand how the diversity of resources (both compositional and phylogenetic) influences the diversity of the consumers, when we vary the phylogenetic structure of the species interactions between the consumer and resources. 
 
 First, I will describe how I will simulate phylogenetic structure in the species interactions. Here, I assume that a consumer either consumes a resource species or it does not. To characterize the interactions, I will use a matrix of zeroes and ones, with a number of rows equal to the number of resources and the number of columns equal to the number of consumers. A one at element [i, j] indicates that consumer j feeds on resource i. To model phylogenetic structure in this matrix, I use a model drawn from @Hadfield2014 (equivalent to a model in @Rafferty2013). The model begins by deriving a covariance structure for a set of latent gaussian variables which describe the strength of interaction between two organisms. Here, since we are assuming a binary presence/absence interaction, the latent variables are linked to the outcome by transforming via a inverse logit to a probability of interaction, which is then used to generate the presence/absence outcome via a draw from the Bernoulli distribution. The covariance structure $W$ between different pairs of interaction strengths is built up from the phylogenies of the two sets of interacting organisms by the following formula:
@@ -18,6 +35,109 @@ $$ W = \sigma ^{2}_{[r]} \left (J_{[c]}\otimes A_{[r]}   \right ) +
 \sigma ^{2}_{[c]r} \left (A_{[c]}\otimes I_{[r]}   \right ) +
 \sigma ^{2}_{[cr]} \left (A_{[c]}\otimes A_{[r]}   \right ) $$
 
-where $\otimes$ is the Kronecker product, the $A$ are matrices based on the phylogenenies of the consumers (subscript $c$), and the resources (subscript $r$). 
+where $\otimes$ is the Kronecker product, the $A$ are correlation matrices based on the phylogenenies of the consumers (subscript $c$), and the resources (subscript $r$). The $J$ are matrices consisting of all ones, and the $I$ are identity matrices.
+
+For this model I make a minor reparameterization like so:
+
+$$ W = \sigma ^{2} \left (\phi_{1}\left (J_{[c]}\otimes A_{[r]}   \right ) + 
+\phi_{2} \left (A_{[c]}\otimes J_{[r]}   \right ) +
+\phi_{3} \left (I_{[c]}\otimes A_{[r]}   \right ) +
+\phi_{4} \left (A_{[c]}\otimes I_{[r]}   \right ) +
+\phi_{5} \left (A_{[c]}\otimes A_{[r]}   \right ) \right ) $$
+
+where $\phi$ is a vector whose elements add to 1 (a unit simplex). This means that $\sigma ^{2}$ is a measure of the total variance attributable to phylogenetic effects, and $\phi$ proportions that variance into different types of phylogenetic structure. In this model, when $\sigma ^{2} = 0$ all consumers species have an equal probability of consuming any resource species and all resources have an equal probability of being consumed by any consumer.
+
+Let's start of by having a look at what effects varying these phylogenetic component has on the consumer-resource consumption matrices.
+
+First, when $\sigma ^{2} = 0$:
+
+```{r noele}
+library(ape)
+library(MASS)
+library(boot)
+set.seed(140814)
+## generate random phylogenies for consumers and resources
+ctree <- rcoal(20)
+rtree <- rcoal(30)
+## generate correlation matrices
+Ac <- vcv(ctree,corr=T)
+Ar <- vcv(rtree,corr=T)
+## store dimensions
+cdim <- dim(Ac)[1]
+rdim <- dim(Ar)[1]
+## make J matrice
+Jc <- matrix(rep(1, cdim^2), nrow = cdim, ncol = cdim)
+Jr <- matrix(rep(1, rdim^2), nrow = rdim, ncol = rdim)
+## make I matrices
+Ic <- diag(cdim)
+Ir <- diag(rdim)
+## make equation elements
+ele1 <- kronecker(Ar, Jc) ## resources nested in consumers (first go through all hosts for parasite 1, then all hosts for parasite 2, etc.)
+ele2 <- kronecker(Jr, Ac)
+ele3 <- kronecker(Ar, Ic)
+ele4 <- kronecker(Ir, Ac)
+ele5 <- kronecker(Ar, Ac)## set parameters
+phi <- c(0, 0, 0, 0, 0)
+sig <- 1
+## calculate equation
+fullcor<-sig*(phi[1]*ele1+phi[2]*ele2+phi[3]*ele3+phi[4]*ele4+phi[5]*ele5)
+## generate latent gaussian variables
+lat_vars <- mvrnorm(1, mu = rep(0, cdim*rdim), Sigma = fullcor)
+## covert to matrix of probabilities
+probs <- inv.logit(lat_vars)
+prob_mat <- matrix(probs, nrow = cdim, ncol = rdim)
+rownames(prob_mat) <- rownames(Ac)
+colnames(prob_mat) <- colnames(Ar)
+## plot probs
+heatmap(prob_mat,  Rowv = as.dendrogram(as.hclust(ctree)), Colv = as.dendrogram(as.hclust(rtree)), labRow = ctree$tip.label, labCol = rtree$tip.label, scale="none", margins = c(5, 6), font.axis = 3, col = rev(grey(seq(0, 1, length = max(prob_mat)))), cexRow = 1, cexCol = 1) 
+```
+
+And now what does it looks like if we put in a lot of phylogenetic element 1 (phylogenetic structure in the resource richness)?
+
+```{r ele1}
+phi <- c(1, 0, 0, 0, 0)
+fullcor<-sig*(phi[1]*ele1+phi[2]*ele2+phi[3]*ele3+phi[4]*ele4+phi[5]*ele5)
+## generate latent gaussian variables
+lat_vars <- mvrnorm(1, mu = rep(0, cdim*rdim), Sigma = fullcor)
+## covert to matrix of probabilities
+probs <- inv.logit(lat_vars)
+prob_mat <- matrix(probs, nrow = cdim, ncol = rdim)
+rownames(prob_mat) <- rownames(Ac)
+colnames(prob_mat) <- colnames(Ar)
+## plot probs
+heatmap(prob_mat,  Rowv = as.dendrogram(as.hclust(ctree)), Colv = as.dendrogram(as.hclust(rtree)), labRow = ctree$tip.label, labCol = rtree$tip.label, scale="none", margins = c(5, 6), font.axis = 3, cexRow = 1, cexCol = 1, col = rev(grey(seq(0, 1, length = 50)))) 
+```
+
+Now here is phylogenetic structure in the consumer host-range:
+
+```{r ele2}
+phi <- c(0, 1, 0, 0, 0)
+fullcor<-sig*(phi[1]*ele1+phi[2]*ele2+phi[3]*ele3+phi[4]*ele4+phi[5]*ele5)
+## generate latent gaussian variables
+lat_vars <- mvrnorm(1, mu = rep(0, cdim*rdim), Sigma = fullcor)
+## covert to matrix of probabilities
+probs <- inv.logit(lat_vars)
+prob_mat <- matrix(probs, nrow = cdim, ncol = rdim)
+rownames(prob_mat) <- rownames(Ac)
+colnames(prob_mat) <- colnames(Ar)
+## plot probs
+heatmap(prob_mat,  Rowv = as.dendrogram(as.hclust(ctree)), Colv = as.dendrogram(as.hclust(rtree)), labRow = ctree$tip.label, labCol = rtree$tip.label, scale="none", margins = c(5, 6), font.axis = 3, cexRow = 1, cexCol = 1, col = rev(grey(seq(0, 1, length = 50)))) 
+```
+
+Phylogenetic element 4 (phylogenetic structure in consumer's resource spectrum):
+
+```{r ele4}
+phi <- c(0, 0, 0, 1, 0)
+fullcor<-sig*(phi[1]*ele1+phi[2]*ele2+phi[3]*ele3+phi[4]*ele4+phi[5]*ele5)
+## generate latent gaussian variables
+lat_vars <- mvrnorm(1, mu = rep(0, cdim*rdim), Sigma = fullcor)
+## covert to matrix of probabilities
+probs <- inv.logit(lat_vars)
+prob_mat <- matrix(probs, nrow = cdim, ncol = rdim)
+rownames(prob_mat) <- rownames(Ac)
+colnames(prob_mat) <- colnames(Ar)
+## plot probs
+heatmap(prob_mat,  Rowv = as.dendrogram(as.hclust(ctree)), Colv = as.dendrogram(as.hclust(rtree)), labRow = ctree$tip.label, labCol = rtree$tip.label, scale="none", margins = c(5, 6), font.axis = 3, cexRow = 1, cexCol = 1, col = rev(grey(seq(0, 1, length = 50)))) 
+```
 
 ##References
