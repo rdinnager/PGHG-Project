@@ -18,7 +18,7 @@
 #' larger).
 #' @return A consumer-resource consumption probability matrix with consumers in the rows, and 
 #' resources in the columns
-#' @import MASS boot
+#' @import MASS boot ape
 #' @export
 gen_CR_matrix <- function(ctree = rcoal(15), rtree = rcoal(25), sig = 1, phi = c(0.2, 0.2, 0,2, 0.2, 0.2), alpha = 0) {
   ## generate correlation matrices
