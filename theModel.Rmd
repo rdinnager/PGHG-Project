@@ -106,32 +106,30 @@ Now here is phylogenetic structure in the consumer host-range:
 
 ```{r ele2}
 phi <- c(0, 1, 0, 0, 0)
-fullcor<-sig*(phi[1]*ele1+phi[2]*ele2+phi[3]*ele3+phi[4]*ele4+phi[5]*ele5)
-## generate latent gaussian variables
-lat_vars <- mvrnorm(1, mu = rep(0, cdim*rdim), Sigma = fullcor)
-## covert to matrix of probabilities
-probs <- inv.logit(lat_vars)
-prob_mat <- matrix(probs, nrow = cdim, ncol = rdim)
-rownames(prob_mat) <- rownames(Ac)
-colnames(prob_mat) <- colnames(Ar)
-## plot probs
-heatmap(prob_mat,  Rowv = as.dendrogram(as.hclust(ctree)), Colv = as.dendrogram(as.hclust(rtree)), labRow = ctree$tip.label, labCol = rtree$tip.label, scale="none", margins = c(5, 6), font.axis = 3, cexRow = 1, cexCol = 1, col = rev(grey(seq(0, 1, length = 50)))) 
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
+plot_CR_matrix(ctree, rtree, prob_mat)
 ```
 
 Phylogenetic element 4 (phylogenetic structure in consumer's resource spectrum):
 
 ```{r ele4}
 phi <- c(0, 0, 0, 1, 0)
-fullcor<-sig*(phi[1]*ele1+phi[2]*ele2+phi[3]*ele3+phi[4]*ele4+phi[5]*ele5)
-## generate latent gaussian variables
-lat_vars <- mvrnorm(1, mu = rep(0, cdim*rdim), Sigma = fullcor)
-## covert to matrix of probabilities
-probs <- inv.logit(lat_vars)
-prob_mat <- matrix(probs, nrow = cdim, ncol = rdim)
-rownames(prob_mat) <- rownames(Ac)
-colnames(prob_mat) <- colnames(Ar)
-## plot probs
-heatmap(prob_mat,  Rowv = as.dendrogram(as.hclust(ctree)), Colv = as.dendrogram(as.hclust(rtree)), labRow = ctree$tip.label, labCol = rtree$tip.label, scale="none", margins = c(5, 6), font.axis = 3, cexRow = 1, cexCol = 1, col = rev(grey(seq(0, 1, length = 50)))) 
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
+plot_CR_matrix(ctree, rtree, prob_mat)```
+```
+
+And an assortment:
+
+```{r assorted}
+phi <- c(0, 0, 0, 0, 1)
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
+plot_CR_matrix(ctree, rtree, prob_mat)
+phi <- c(0.5, 0.5, 0, 0, 0)
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
+plot_CR_matrix(ctree, rtree, prob_mat)
+phi <- c(0.2, 0.2, 0.2, 0.2, 0.2)
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
+plot_CR_matrix(ctree, rtree, prob_mat)
 ```
 
 ##References
