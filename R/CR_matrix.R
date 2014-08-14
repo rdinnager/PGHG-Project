@@ -18,6 +18,8 @@
 #' larger).
 #' @return A consumer-resource consumption probability matrix with consumers in the rows, and 
 #' resources in the columns
+#' @import MASS boot
+#' @export
 gen_CR_matrix <- function(ctree = rcoal(15), rtree = rcoal(25), sig = 1, phi = c(0.2, 0.2, 0,2, 0.2, 0.2), alpha = 0) {
   ## generate correlation matrices
   Ac <- vcv(ctree,corr=T)
@@ -57,6 +59,7 @@ gen_CR_matrix <- function(ctree = rcoal(15), rtree = rcoal(25), sig = 1, phi = c
 #' for the resources
 #' @param prob_mat Consumer-resource consumption probability matrix like that produced 
 #' by \code{\link{gen_CR_matrix}}.
+#' @export
 plot_CR_matrix <- function(ctree, rtree, prob_mat) {
 ## plot probs
   heatmap(prob_mat,  Rowv = as.dendrogram(as.hclust(ctree)), Colv = as.dendrogram(as.hclust(rtree)), labRow = ctree$tip.label, labCol = rtree$tip.label, scale="none", margins = c(5, 6), font.axis = 3, col = rev(grey(seq(0, 1, length = max(prob_mat)))), cexRow = 1, cexCol = 1) 
