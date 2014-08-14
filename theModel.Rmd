@@ -51,7 +51,7 @@ Let's start of by having a look at what effects varying these phylogenetic compo
 
 First, when $\sigma ^{2} = 0$:
 
-```{r noele}
+```{r noele, dev='svg'}
 library(ape)
 library(MASS)
 library(boot)
@@ -95,7 +95,7 @@ heatmap(prob_mat,  Rowv = as.dendrogram(as.hclust(ctree)), Colv = as.dendrogram(
 I rolled the above into a couple of functions in the project package so I can plot different ones quickly.
 So now what does it looks like if we put in a lot of phylogenetic element 1 (phylogenetic structure in the resource richness)?
 
-```{r ele1}
+```{r ele1, dev='svg'}
 library(PGHGproject)
 phi <- c(1, 0, 0, 0, 0)
 prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
@@ -104,7 +104,7 @@ plot_CR_matrix(ctree, rtree, prob_mat)
 
 Now here is phylogenetic structure in the consumer host-range:
 
-```{r ele2}
+```{r ele2, dev='svg'}
 phi <- c(0, 1, 0, 0, 0)
 prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
 plot_CR_matrix(ctree, rtree, prob_mat)
@@ -112,15 +112,15 @@ plot_CR_matrix(ctree, rtree, prob_mat)
 
 Phylogenetic element 4 (phylogenetic structure in consumer's resource spectrum):
 
-```{r ele4}
+```{r ele4, dev='svg'}
 phi <- c(0, 0, 0, 1, 0)
 prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
-plot_CR_matrix(ctree, rtree, prob_mat)```
+plot_CR_matrix(ctree, rtree, prob_mat)
 ```
 
 And an assortment:
 
-```{r assorted}
+```{r assorted, dev='svg'}
 phi <- c(0, 0, 0, 0, 1)
 prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
 plot_CR_matrix(ctree, rtree, prob_mat)
