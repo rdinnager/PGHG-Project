@@ -26,8 +26,13 @@ opts_chunk$set(fig.path="out/",
 opts_knit$set(width=75)
 ```
 
-Here, I document some testing of a stochastic patch model, which will be used in conjunction with a phylogenetic simulation model, to look at the effects of phylogenetic diversity in a resource species, on the diversity of consumer species. The patch model is very simple. It consists of a number of sites that exist in a patch. Each site is occupied by a fixed resource species. In this model, resource species cannot go extinct --- they are properties of the patch. This makes sense because we are mainly interested in the short-term local effect of diversity (rather than the long-term co-evolutionary / metacommunity effects).
+Here, I document some testing of a stochastic patch model, which will be used in conjunction with a phylogenetic simulation model, to look at the effects of phylogenetic diversity in a resource species, on the diversity of consumer species. The patch model is very simple. It consists of a number of sites that exist in a patch. Each site is occupied by a fixed resource species. In this model, resource species cannot go extinct --- they are properties of the patch. This makes sense because we are mainly interested in the short-term local effect of diversity (rather than the long-term co-evolutionary / metacommunity effects). An example would be a community of perrenial plants that stays relatively stable from year to year, with an associated community of insect herbivores which recruit into the perrenial plant communities.
+
+Each time step of the model, a consumer species recruits into an unoccupied site in the patch with a probability $PP$ (pool probability). Once a species recruits into the patch, the species is chosen with an equal probability for each species in the pool. Sites that are already occupied become unoccupied at a rate equal to $d$ (death rate). Unoccupied sites are occupied by a consumer species already in the patch with probability $1 - PP$. The identity of the species is chosen with a probability equal to the consumption probability of the consumer species on the resource species in the site. When there is a single resource in a patch, and $PP = 1$, then this model is equivalent to a basic neutral model.
+
+Let's try a run of the model to see what its output looks like. We use the package `deSolve` to run the model in 'iteration' mode. 
 
 ```{r setup}
 library(PGHGproject)
+
 ```
