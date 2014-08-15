@@ -15,13 +15,14 @@ library(knitr)
 options(max.print="75")
 opts_chunk$set(fig.path="out/",
                echo=TRUE,
-         cache=TRUE,
+               cache=TRUE,
                cache.path="cache/",
                prompt=FALSE,
                tidy=TRUE,
                comment=NA,
                message=FALSE,
-               warning=FALSE)
+               warning=FALSE,
+               autodep = TRUE)
 opts_knit$set(width=75)
 ```
 
@@ -130,6 +131,41 @@ plot_CR_matrix(ctree, rtree, prob_mat)
 phi <- c(0.2, 0.2, 0.2, 0.2, 0.2)
 prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
 plot_CR_matrix(ctree, rtree, prob_mat)
+```
+
+We can increase the variation between species in consumption rates by increasing the total variance parameter ($\sigma ^{2}).
+
+```{r incease_sig, dev='svg'}
+phi <- c(0.1, 0.1, 0.4, 0.4, 0)
+sig <- 2
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
+plot_CR_matrix(ctree, rtree, prob_mat)
+sig <- 5
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, 0)
+plot_CR_matrix(ctree, rtree, prob_mat)
+```
+
+What does that look like when we convert it to a binary presence/absence representation?
+
+```{r binary, dev='svg'}
+cr_bin <- matrix(rbinom(cdim*rdim, 1, as.vector(prob_mat)), nrow = cdim, ncol = rdim)
+plot_CR_matrix(ctree, rtree, cr_bin)
+```
+
+Let's reduce the total interaction strength:
+
+```{r reduce_strength, dev='svg'}
+alpha <- -2
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, alpha)
+plot_CR_matrix(ctree, rtree, prob_mat)
+cr_bin <- matrix(rbinom(cdim*rdim, 1, as.vector(prob_mat)), nrow = cdim, ncol = rdim)
+plot_CR_matrix(ctree, rtree, cr_bin)
+phi <- c(0, 0.3, 0, 0.5, 0.2)
+alpha <- -3
+prob_mat <- gen_CR_matrix(ctree, rtree, sig, phi, alpha)
+plot_CR_matrix(ctree, rtree, prob_mat)
+cr_bin <- matrix(rbinom(cdim*rdim, 1, as.vector(prob_mat)), nrow = cdim, ncol = rdim)
+plot_CR_matrix(ctree, rtree, cr_bin)
 ```
 
 ##References
