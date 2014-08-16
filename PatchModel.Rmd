@@ -5,14 +5,13 @@ date: "15/08/2014"
 output: 
   html_document:
     highlight: pygments
-bibliography: "/home/din02g/Google Drive/References/PGHG.bib"
 ---
 
 ```{r knitr_init, echo=FALSE, results="asis", cache=FALSE}
 library(knitr)
 
 ## Global options
-options(max.print="75")
+options(max.print="500")
 opts_chunk$set(fig.path="out/",
                echo=TRUE,
                cache=TRUE,
@@ -30,9 +29,57 @@ Here, I document some testing of a stochastic patch model, which will be used in
 
 Each time step of the model, a consumer species recruits into an unoccupied site in the patch with a probability $PP$ (pool probability). Once a species recruits into the patch, the species is chosen with an equal probability for each species in the pool. Sites that are already occupied become unoccupied at a rate equal to $d$ (death rate). Unoccupied sites are occupied by a consumer species already in the patch with probability $1 - PP$. The identity of the species is chosen with a probability equal to the consumption probability of the consumer species on the resource species in the site. When there is a single resource in a patch, and $PP = 1$, then this model is equivalent to a basic neutral model.
 
-Let's try a run of the model to see what its output looks like. We use the package `deSolve` to run the model in 'iteration' mode. 
+Let's try a run of the model to see what its output looks like. We use the package `deSolve` to run the model in 'iteration' mode. I also give the species in the simulation 'random' names.
 
-```{r setup}
+```{r setup, dev='svg'}
 library(PGHGproject)
-
+library(randomNames)
+data(randomNamesData)
+set.seed(20140816)
+## generate occupancy matrix
+cnames <- paste(sample(names(c(randomNamesData$last_names_e4, randomNamesData$last_names_e5, 
+                               randomNamesData$last_names_e3)), 20),
+      sample(names(c(randomNamesData$last_names_e4, randomNamesData$last_names_e5, 
+                     randomNamesData$last_names_e3)), 20))
+rnames <- paste(sample(names(c(randomNamesData$first_names_e5_g0, randomNamesData$first_names_e5_g1, 
+               randomNamesData$first_names_e1_g0, randomNamesData$first_names_e1_g1)), 30),
+      sample(names(c(randomNamesData$first_names_e5_g0, randomNamesData$first_names_e5_g1, 
+                     randomNamesData$first_names_e1_g0, randomNamesData$first_names_e1_g1)), 30))
+ctree <- rcoal(20, cnames)
+rtree <- rcoal(30, rnames)
+plot(ctree)
+plot(rtree, cex = 0.7)
+occ_mat <- gen_CR_matrix(ctree, rtree, sig = 2, phi = c(0, 0, 0.5, 0.5, 0), alpha = logit(0.25))
+## choose resource species to occupy patch
+r_specs <- sample(rnames, 10)
+## set-up model parameters
+params <- list()
+params$d <- 0.25
+params$nspec <- 20
+params$poolprob <- 0.05
+params$ntype <- 10
+params$occmat <- matrix(rbinom(params$nspec*params$ntype, 1, as.vector(occ_mat[, r_specs])), nrow = params$nspec, ncol = params$ntype)
+params$type <- sample.int(10, size = 1000, replace = TRUE)
+## run model
+test <- ode(rep(0, 1000), c(1:200), stoch_patch, params, "iteration")
+test[200, ]
 ```
+
+The model output is a matrix, where each row gives a vector of species IDs, occupying each of the 1000 sites in the patch. We can get a count of each species in the patch using the `table` command in base R.
+
+```{r table}
+spec_tab <- table(factor(test[200, 2:1001], levels = as.character(seq_len(20))))
+names(spec_tab) <- rownames(occ_mat)[as.numeric(names(spec_tab))]
+spec_tab
+```
+
+The model behaves as expected, with the consumer species that was able to consume the most number of species in the patch, having the highest abundance.
+
+```{r print_occmat, dev='svg'}
+r_cons <- apply(params$occmat, 1, sum)
+names(r_cons) <- rownames(occ_mat)
+r_cons
+plot(as.vector(spec_tab)~as.vector(r_cons))
+```
+
+I rolled the `table` summarization method into a function. Now we can track the consumer species over time.
