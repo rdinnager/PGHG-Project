@@ -73,7 +73,7 @@ names(spec_tab) <- rownames(occ_mat)[as.numeric(names(spec_tab))]
 spec_tab
 ```
 
-The model behaves as expected, with the consumer species that was able to consume the most number of species in the patch, having the highest abundance.
+The model behaves as expected, with the consumer species that was able to consume the most number of species in the patch, having the highest abundance (and also clearly the coolest name: "Zeferino Santiago Shugars").
 
 ```{r print_occmat, dev='svg'}
 r_cons <- apply(params$occmat, 1, sum)
@@ -83,3 +83,46 @@ plot(as.vector(spec_tab)~as.vector(r_cons))
 ```
 
 I rolled the `table` summarization method into a function. Now we can track the consumer species over time.
+
+```{r tab_time, dev='svg'}
+time_spec <- apply(test[ , 2:1001], 1, c_tabulate, spec_names = rownames(occ_mat))
+plot(time_spec["Zeferino Santiago Shugars", ], type = "l")
+```
+
+Okay, so that looks like it is working. Now, we will creat some phylogenetically structured resource communities, and run the model on them. We will make 30 over-, 30 under-, and 30 randomly dispersed communities.
+
+```{r phylo_struct, dev='svg'}
+pdist <- cophenetic(rtree)
+comms <- rbind(make_OD_comms(pdist, rep(21, 30), prop = runif(30, 0.15, 0.95)),
+               make_rand_comms(pdist, rep(21, 30), prop = runif(30, 0.15, 0.95)),
+               make_UD_comms(pdist, rep(21, 30), prop = runif(30, 0.15, 0.95)))
+## check if it worked
+mean(mpd(samp = comms, dis = pdist)[1:30])
+mean(mpd(samp = comms, dis = pdist)[31:60])
+mean(mpd(samp = comms, dis = pdist)[61:90])
+plot(mpd(samp = comms, dis = pdist))
+```
+
+Indeed, the underdispersed communities generally have a lower Mean Phylogenetic Distance (MPD) than the overdispersed and the random communities, but there is a decent amount of stochasticity there. Now to run our stochastic patch model on these communities. First, we need to create a function that will store all the necessary values for the model in an object, which we can then make a list of.
+
+```{r phylo_patch}
+patch_mod_ob <- function(comms, occmat, d, nspec, poolprob, nsites) {
+  out <- list()
+  ## choose resource species to occupy patch
+  r_specs <- names(comms)[comms == 1]
+  ## set-up model parameters
+  params <- list()
+  params$d <- d
+  params$nspec <- nspec
+  params$poolprob <- poolprob
+  params$ntype <- length(r_specs)
+  params$occmat <- matrix(rbinom(params$nspec*params$ntype, 1, as.vector(occ_mat[, r_specs])), nrow =
+                            params$nspec, ncol = params$ntype)
+  params$type <- sample.int(params$ntype, size = nsites, replace = TRUE)
+  out$params <- params
+  out$r_spec <- r_specs
+  return(out)
+}
+patch_dat <- apply(comms, 1, patch_mod_ob, occmat = occ_mat, d = 0.25, nspec = 20, poolprob = 0.05, nsites = 1000)
+test_comms <- lapply(patch_dat, function(x) ode(rep(0, 1000), c(1:200), stoch_patch, x$params, "iteration"))
+```
