@@ -31,6 +31,6 @@ stoch_patch <- function(t, y, params) {
   pmat <- specmat * params$occmat #multiply prob of immigrating by prob of being able to feed (0 or 1)
   pmatvec <- pmat[ , params$type[dead]] #pull out probs for all cells according to their resource type
   #Use probs to calculate which species should be placed into which empty cells if any
-  y[dead] <- apply(pmatvec, 2, function(x) which(rmultinom(1, 1, x) == 1) * rbinom(1, 1, sum(x)))
+  y[dead] <- apply(pmatvec, 2, function(x) ifelse(sum(x) > 0, which(rmultinom(1, 1, x) == 1), 0) * rbinom(1, 1, sum(x)))
   return(list(y))
 }
