@@ -49,7 +49,7 @@ ctree <- rcoal(20, cnames)
 rtree <- rcoal(30, rnames)
 plot(ctree)
 plot(rtree, cex = 0.7)
-occ_mat <- gen_CR_matrix(ctree, rtree, sig = 2, phi = c(0, 0, 0.5, 0.5, 0), alpha = logit(0.25))
+occ_mat <- gen_CR_matrix(ctree, rtree, sig = 3, phi = c(0, 0, 1, 0, 0), alpha = logit(0.15))
 ## choose resource species to occupy patch
 r_specs <- sample(rnames, 10)
 ## set-up model parameters
@@ -65,7 +65,7 @@ test <- ode(rep(0, 1000), c(1:200), stoch_patch, params, "iteration")
 test[200, ]
 ```
 
-The model output is a matrix, where each row gives a vector of species IDs, occupying each of the 1000 sites in the patch. We can get a count of each species in the patch using the `table` command in base R.
+The model output is a matrix, where each row gives a vector of species IDs, occupying each of the 200 sites in the patch. We can get a count of each species in the patch using the `table` command in base R.
 
 ```{r table}
 spec_tab <- table(factor(test[200, 2:1001], levels = as.character(seq_len(20))))
@@ -89,17 +89,17 @@ time_spec <- apply(test[ , 2:1001], 1, c_tabulate, spec_names = rownames(occ_mat
 plot(time_spec["Zeferino Santiago Shugars", ], type = "l")
 ```
 
-Okay, so that looks like it is working. Now, we will creat some phylogenetically structured resource communities, and run the model on them. We will make 30 over-, 30 under-, and 30 randomly dispersed communities.
+Okay, so that looks like it is working. Now, we will creat some phylogenetically structured resource communities, and run the model on them. We will make 50 over-, 50 under-, and 50 randomly dispersed communities.
 
 ```{r phylo_struct, dev='svg'}
 pdist <- cophenetic(rtree)
-comms <- rbind(make_OD_comms(pdist, rep(21, 30), prop = runif(30, 0.15, 0.95)),
-               make_rand_comms(pdist, rep(21, 30), prop = runif(30, 0.15, 0.95)),
-               make_UD_comms(pdist, rep(21, 30), prop = runif(30, 0.15, 0.95)))
+comms <- rbind(make_OD_comms(pdist, rep(21, 50), prop = runif(50, 0.15, 0.95)),
+               make_rand_comms(pdist, rep(21, 50), prop = runif(50, 0.15, 0.95)),
+               make_UD_comms(pdist, rep(21, 50), prop = runif(50, 0.15, 0.95)))
 ## check if it worked
-mean(mpd(samp = comms, dis = pdist)[1:30])
-mean(mpd(samp = comms, dis = pdist)[31:60])
-mean(mpd(samp = comms, dis = pdist)[61:90])
+mean(mpd(samp = comms, dis = pdist)[1:50])
+mean(mpd(samp = comms, dis = pdist)[51:100])
+mean(mpd(samp = comms, dis = pdist)[101:150])
 plot(mpd(samp = comms, dis = pdist))
 ```
 
@@ -123,6 +123,32 @@ patch_mod_ob <- function(comms, occmat, d, nspec, poolprob, nsites) {
   out$r_spec <- r_specs
   return(out)
 }
-patch_dat <- apply(comms, 1, patch_mod_ob, occmat = occ_mat, d = 0.25, nspec = 20, poolprob = 0.05, nsites = 1000)
-test_comms <- lapply(patch_dat, function(x) ode(rep(0, 1000), c(1:200), stoch_patch, x$params, "iteration"))
+patch_dat <- apply(comms, 1, patch_mod_ob, occmat = occ_mat, d = 0.25, nspec = 20, poolprob = 0.05, nsites = 200)
+test_comms <- lapply(patch_dat, function(x) ode(rep(0, 200), c(1:200), stoch_patch, x$params, "iteration"))
+c_tabulate(test_comms[[1]][200, 2:201], rownames(occ_mat))
+```
+
+Now we can extract the data we need from each of the simulations. We will calculate the diversity of consumers in each patch at the end of the simulation and compare it to the diversity of resources in the patch. Because the model has a small probability of recolonization from the species pool in every round, species richness of consumers is likely a misleading measure (because many species will be in the patch ephemerally due to propagule pressure, rather than them being suited to the patch). Instead, we will use an abundance weighted measure, which will downweight species with few individuals. Another possible way would be to run the model for a certain number of timesteps, and then "turn off" colonization from the pool, allowing existing communities to equilibriate in isolation. Thus ephemeral species will go extinct. I will think about this idea more later. 
+
+```{r extract_data, dev='svg', fig.width=10}
+c_dat <- sapply(test_comms, function(x) c_tabulate(x[200, 2:201], rownames(occ_mat)))
+library(vegan)
+c_shannon <- diversity(t(c_dat))
+c_sr <- apply(c_dat, 2, function(x) sum(x > 0))
+c_hill <- renyi(t(c_dat), 1, hill = TRUE)
+r_sr <- apply(comms, 1, sum)
+library(ggplot2)
+library(dplyr)
+plot_dat <- data.frame(c_hill = c_hill, r_sr = r_sr) %>%
+  mutate(r_pd = mpd(samp = comms, dis = pdist), r_pd_cat = c(rep("High", 50), rep("Intermediate", 50), rep("Low", 50)))
+p <- ggplot(plot_dat, aes(r_sr, c_hill)) +
+  geom_point() +
+  facet_grid(.~r_pd_cat) +
+  stat_smooth(method = "lm", formula = y ~ poly(x, 2)) +
+  xlab("Resource~Species~Richness") +
+  ylab("Consumer~Diversity")
+print(p)
+summary(lm(plot_dat$c_hill~plot_dat$r_pd+plot_dat$r_sr+I(plot_dat$r_sr^2)+I(plot_dat$r_sr^2):plot_dat$r_pd))
+summary(lm(plot_dat$c_hill~plot_dat$r_pd*plot_dat$r_sr*I(plot_dat$r_sr^2)*I(plot_dat$r_pd^2)))
+summary(lm(plot_dat$c_hill~scale(plot_dat$r_pd)*scale(plot_dat$r_sr)))
 ```
